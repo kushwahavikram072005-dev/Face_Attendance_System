@@ -3,6 +3,7 @@ import cv2
 import numpy as np
 from insightface.app import FaceAnalysis
 
+
 # Load InsightFace Model
 app = FaceAnalysis(name="buffalo_l")
 app.prepare(ctx_id=-1)
@@ -45,15 +46,18 @@ def find_face(test_image):
     test_embedding = get_embedding(test_image)
 
     if test_embedding is None:
-    return None, 0.0
+        return None, 0.0
+
 
     folder = "images"
 
-   if not os.path.exists(folder):
-    return None, 0.0
-       
+    if not os.path.exists(folder):
+        return None, 0.0
+
+
     best_score = 0
     best_person = None
+
 
     for file in os.listdir(folder):
 
@@ -66,15 +70,21 @@ def find_face(test_image):
             if db_embedding is None:
                 continue
 
+
             score = cosine_similarity(
                 test_embedding,
                 db_embedding
             )
 
+
             if score > best_score:
                 best_score = score
                 best_person = file.split(".")[0]
+
+
+    # Match Threshold
     if best_score > 0.90:
-     return best_person, best_score
+        return best_person, best_score
+
 
     return None, best_score
