@@ -74,8 +74,7 @@ def find_face(test_image):
             if score > best_score:
                 best_score = score
                 best_person = file.split(".")[0]
+    if best_score > 0.90:
+     return best_person, best_score
 
-    if best_score > 0.60:
-        return best_person
-
-    return None
+    return None, best_score

@@ -157,9 +157,8 @@ elif menu == "Take Attendance":
         )
 
 
-        person = find_face(
-            test_image
-        )
+        person, score = find_face(test_image)
+        st.write(f"Match Score: {score:.3f}")
 
 
         if person:
