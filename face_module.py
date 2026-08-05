@@ -49,9 +49,9 @@ def find_face(test_image):
 
     folder = "images"
 
-    if not os.path.exists(folder):
-        return None
-
+   if not os.path.exists(folder):
+    return None, 0.0
+       
     best_score = 0
     best_person = None
 
