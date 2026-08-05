@@ -45,7 +45,7 @@ def find_face(test_image):
     test_embedding = get_embedding(test_image)
 
     if test_embedding is None:
-        return None
+    return None, 0.0
 
     folder = "images"
 
