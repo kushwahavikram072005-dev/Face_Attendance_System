@@ -1,7 +1,9 @@
 streamlit
-opencv-python
+opencv-python-headless
 numpy
 pandas
-pillow
+Pillow
 pymongo
 python-dotenv
+insightface
+onnxruntime
