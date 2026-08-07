@@ -1,15 +1,22 @@
 import streamlit as st
 import database
 import os
-from face_module import find_face
-from datetime import datetime
+
+from face_module import (
+    get_embedding,
+    find_face
+)
 
 
-# Database Create
+
+# Database
+
 database.create_database()
 
 
-# Page Setting
+
+# Page
+
 st.set_page_config(
     page_title="Face Attendance System",
     page_icon="📸",
@@ -19,8 +26,9 @@ st.set_page_config(
 
 st.title("📸 AI Face Attendance System")
 
-st.sidebar.title("Menu")
 
+
+# Menu
 
 menu = st.sidebar.radio(
     "Select Option",
@@ -33,18 +41,23 @@ menu = st.sidebar.radio(
 )
 
 
+
+
 # ==========================
 # Dashboard
 # ==========================
+
 if menu == "Dashboard":
+
 
     st.header("📊 Dashboard")
 
 
-    col1, col2 = st.columns(2)
+    col1,col2 = st.columns(2)
 
 
     with col1:
+
         st.metric(
             "Total Students",
             database.total_students()
@@ -52,6 +65,7 @@ if menu == "Dashboard":
 
 
     with col2:
+
         st.metric(
             "Today's Attendance",
             database.today_attendance()
@@ -63,12 +77,16 @@ if menu == "Dashboard":
     )
 
 
+
+
 # ==========================
 # Register Face
 # ==========================
+
 elif menu == "Register Face":
 
-    st.header("👤 Register New Face")
+
+    st.header("👤 Register Student (5 Photos)")
 
 
     name = st.text_input(
@@ -76,15 +94,46 @@ elif menu == "Register Face":
     )
 
 
-    image = st.camera_input(
-        "Capture Student Face"
+    st.write(
+        "Student ke 5 photos capture karo"
     )
 
 
-    if st.button("Save Face"):
+    img1 = st.camera_input(
+        "Photo 1"
+    )
+
+    img2 = st.camera_input(
+        "Photo 2"
+    )
+
+    img3 = st.camera_input(
+        "Photo 3"
+    )
+
+    img4 = st.camera_input(
+        "Photo 4"
+    )
+
+    img5 = st.camera_input(
+        "Photo 5"
+    )
 
 
-        if name and image:
+
+    if st.button("Save Student"):
+
+
+        images = [
+            img1,
+            img2,
+            img3,
+            img4,
+            img5
+        ]
+
+
+        if name and all(images):
 
 
             os.makedirs(
@@ -93,35 +142,81 @@ elif menu == "Register Face":
             )
 
 
-            image_path = f"images/{name}.jpg"
+            image_paths = []
+            embeddings = []
 
 
-            with open(image_path, "wb") as file:
-                file.write(image.getvalue())
+
+            for i,img in enumerate(images):
+
+
+                path = f"images/{name}_{i+1}.jpg"
+
+
+                with open(path,"wb") as file:
+
+                    file.write(
+                        img.getvalue()
+                    )
+
+
+                embedding = get_embedding(
+                    path
+                )
+
+
+                if embedding is None:
+
+                    st.error(
+                        f"Photo {i+1} me face detect nahi hua"
+                    )
+
+                    st.stop()
+
+
+
+                image_paths.append(path)
+
+                embeddings.append(
+                    embedding
+                )
+
 
 
             database.register_student(
+
                 name,
-                image_path
+
+                image_paths,
+
+                embeddings
+
             )
 
 
             st.success(
-                "Face Registered Successfully ✅"
+                "5 Photos ke sath Face Registered ✅"
             )
+
 
 
         else:
 
+
             st.warning(
-                "Name aur Image dono required hai"
+                "Name aur 5 Photos required hain"
             )
 
 
+
+
+
 # ==========================
-# Take Attendance
+# Attendance
 # ==========================
+
 elif menu == "Take Attendance":
+
 
     st.header("✅ Take Attendance")
 
@@ -129,6 +224,7 @@ elif menu == "Take Attendance":
     image = st.camera_input(
         "Capture Face"
     )
+
 
 
     if image:
@@ -143,22 +239,24 @@ elif menu == "Take Attendance":
         test_image = "temp/test.jpg"
 
 
-        with open(test_image, "wb") as file:
-            file.write(image.getvalue())
+
+        with open(test_image,"wb") as file:
+
+            file.write(
+                image.getvalue()
+            )
 
 
-        st.image(
+
+        person,score = find_face(
             test_image
         )
 
 
         st.write(
-            "Face Checking..."
+            f"Match Score : {score:.3f}"
         )
 
-
-        person, score = find_face(test_image)
-        st.write(f"Match Score: {score:.3f}")
 
 
         if person:
@@ -172,44 +270,51 @@ elif menu == "Take Attendance":
             if result:
 
                 st.success(
-                    f"Attendance Marked: {person} ✅"
+                    f"Attendance Marked : {person} ✅"
                 )
+
 
             else:
 
                 st.warning(
-                    f"{person} ki attendance pehle hi lag chuki hai ⚠️"
+                    "Attendance already marked ⚠️"
                 )
 
 
         else:
+
 
             st.error(
                 "Face Not Recognized ❌"
             )
 
 
+
+
+
 # ==========================
-# Attendance Records
+# Records
 # ==========================
+
 elif menu == "Attendance Records":
 
 
-    st.header("📋 Attendance Records")
+    st.header(
+        "📋 Attendance Records"
+    )
 
 
-    records = database.get_attendance()
+    data = database.get_attendance()
 
 
-    if records:
+    if data:
 
-
-        st.table(records)
-
+        st.dataframe(
+            data
+        )
 
     else:
 
-
-        st.warning(
-            "No Attendance Found"
+        st.info(
+            "No Records Found"
         )

@@ -1,183 +1,133 @@
-import sqlite3
 from datetime import datetime
+from dotenv import load_dotenv
+import os
+from pymongo import MongoClient
 
-DB_NAME = "attendance.db"
+
+load_dotenv()
+
+client = MongoClient(os.getenv("MONGO_URI"))
+
+db = client["face_attendance"]
+
+students_collection = db["students"]
+attendance_collection = db["attendance"]
+
 
 
 # ==========================
-# Create Database
+# Database Connect
 # ==========================
+
 def create_database():
+    print("MongoDB Connected Successfully")
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
 
-    # Student Table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS students(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT UNIQUE,
-        image_path TEXT
+
+# ==========================
+# Register Student (5 Photos)
+# ==========================
+
+def register_student(name, image_paths, embeddings):
+
+    students_collection.update_one(
+        {"name": name},
+        {
+            "$set": {
+                "name": name,
+                "images": image_paths,
+                "embeddings": [
+                    e.tolist() for e in embeddings
+                ]
+            }
+        },
+        upsert=True
     )
-    """)
-
-    # Attendance Table
-    cursor.execute("""
-    CREATE TABLE IF NOT EXISTS attendance(
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT,
-        date TEXT,
-        time TEXT
-    )
-    """)
-
-    conn.commit()
-    conn.close()
-
-
-# ==========================
-# Register Student
-# ==========================
-def register_student(name, image_path):
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT OR REPLACE INTO students(name,image_path)
-    VALUES(?,?)
-    """, (name, image_path))
-
-    conn.commit()
-    conn.close()
-
-
-# ==========================
-# Mark Attendance
-# ==========================
-def mark_attendance(name):
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    today = datetime.now().strftime("%d-%m-%Y")
-    current_time = datetime.now().strftime("%I:%M %p")
-
-    cursor.execute("""
-    SELECT * FROM attendance
-    WHERE name=? AND date=?
-    """, (name, today))
-
-    data = cursor.fetchone()
-
-    if data:
-        conn.close()
-        return False
-
-    cursor.execute("""
-    INSERT INTO attendance(name,date,time)
-    VALUES(?,?,?)
-    """, (name, today, current_time))
-
-    conn.commit()
-    conn.close()
 
     return True
+
 
 
 # ==========================
 # Get Students
 # ==========================
+
 def get_students():
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    return list(
+        students_collection.find()
+    )
 
-    cursor.execute("SELECT * FROM students")
 
-    data = cursor.fetchall()
 
-    conn.close()
+# ==========================
+# Attendance
+# ==========================
 
-    return data
+def mark_attendance(name):
+
+    today = datetime.now().strftime("%d-%m-%Y")
+    current_time = datetime.now().strftime("%I:%M %p")
+
+
+    old = attendance_collection.find_one(
+        {
+            "name": name,
+            "date": today
+        }
+    )
+
+
+    if old:
+        return False
+
+
+
+    attendance_collection.insert_one(
+        {
+            "name": name,
+            "date": today,
+            "time": current_time
+        }
+    )
+
+
+    return True
+
 
 
 # ==========================
 # Get Attendance
 # ==========================
+
 def get_attendance():
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    return list(
+        attendance_collection.find().sort("_id",-1)
+    )
 
-    cursor.execute("""
-    SELECT * FROM attendance
-    ORDER BY id DESC
-    """)
-
-    data = cursor.fetchall()
-
-    conn.close()
-
-    return data
 
 
 # ==========================
 # Total Students
 # ==========================
+
 def total_students():
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
+    return students_collection.count_documents({})
 
-    cursor.execute("SELECT COUNT(*) FROM students")
-
-    count = cursor.fetchone()[0]
-
-    conn.close()
-
-    return count
 
 
 # ==========================
-# Today's Attendance
+# Today Attendance
 # ==========================
+
 def today_attendance():
 
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
     today = datetime.now().strftime("%d-%m-%Y")
 
-    cursor.execute("""
-    SELECT COUNT(*) FROM attendance
-    WHERE date=?
-    """, (today,))
-
-    count = cursor.fetchone()[0]
-
-    conn.close()
-
-    return count
-
-
-# ==========================
-# Check Attendance
-# ==========================
-def check_attendance(name):
-
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-
-    today = datetime.now().strftime("%d-%m-%Y")
-
-    cursor.execute("""
-    SELECT * FROM attendance
-    WHERE name=? AND date=?
-    """, (name, today))
-
-    data = cursor.fetchone()
-
-    conn.close()
-
-    return data is not None
+    return attendance_collection.count_documents(
+        {
+            "date": today
+        }
+    )
